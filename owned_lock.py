@@ -1,6 +1,7 @@
 __version__ = "0.1.0"
 __all__ = ("Mutex",)
 
+import sys
 from dataclasses import dataclass, field, InitVar
 from typing import TypeVar, Generic, Optional, ForwardRef
 from threading import Lock
@@ -44,9 +45,14 @@ class Mutex(Generic[T]):
     __inner_lock: Lock
     __inner_guard: Optional["MutexGuard"]
 
-    def __init__(self, value: T):
-        import sys
-        print(sys.getrefcount(value))
+    def __init__(self, value: T, *, refcount_max: int = 5):
+
+        if sys.getrefcount(value) > refcount_max:
+            raise LeakyReference(
+                f"Refusing to lock over {value=!r} because it potentially leaks! "
+                "(help: destroy/weaken other refs first, use gc.getrefferents(value).)"
+            )
+
         self.__inner = value
         self.__inner_lock = Lock()
         self.__inner_guard = None
