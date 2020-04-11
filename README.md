@@ -11,26 +11,74 @@
 
 Synchronization primitives that [own](#what-is-ownership) the data they lock.
 
-I've been using Python for the entirety of my programming career and recently
-I've double timed it with Rust for the last two years. Today I absolutely adore
-Rusts borrowing and ownership rules and the memory guarentees users stand to
-gain from that and as a consequence of those rules I believe that any sync
-primitive in Rust is immedietly better because, unless you do some really
-unsafe stuff and explicitly drop those promises, **you always have to interact
-with the underlying sync mechanism (lock) if you want to use the data it is
-responsible for!** This greatly reduces the risk of running up against the well
-known villian of mulititasking programming: data races; by forcing the user to
-explicitly acknowledge the lock and avoiding unprotected accesses.
+In Python data and locks are always adjacent, that is to say this is commonly done:
+
+```py
+data = make_important_data()
+data_lock = threading.Lock()
+print(f"Data {data!r}")  # <__main__.object object @ 0xDEADBEEF> 
+```
+
+In Rust the concept of ownership & borrowing is heavily present in every block
+you write, so when dealing with a mutex lock (like threading.Lock) you see this:
+
+```rust
+let data = make_important_data();
+let data_lock = Mutex::new(data);
+printlnt!("Data: {:?}", data);  // Compiler error: use after `move`.
+```
+
+Since the lock in Rust-land takes ownership of the original data, you must ask
+the mutex if you want to interact with the data:
+
+```rust
+{
+    let data = data_lock.lock();
+    println!("Data: {:?}", *data) // Yay we can now use data!
+}
+```
+
+Where in Python, no such guarentees are made. If you have a lock that protects
+access for some data that's just about as effective as a comment on a global
+variable in C.
+
+For instance, given the following code:
+
+```py
+mapping = {}
+mapping_lock = Lock()
+
+def runs_in_thread_a():
+    while True:
+        with mapping_lock:
+            key = randint()
+            mapping[key] = str(key)
+
+def runs_in_thread_b():
+    with mapping_lock:
+        previous = set(mapping.keys())
+
+    while True:
+        with mapping_lock:
+            diff = set(mapping.keys()).difference(previous)
+
+            if diff:
+                print(f"New key(s)! {diff!r}")
+```
+
+Given a new third party or contributor that needs to work with the `mapping`.
+You best pray they notice `mapping_lock` exists or is documented somewhere else
+they're gonna go ahed and perform some unsafe access to access the data.
 
 ### TLDR;
 
 #### For Rustaceans
 
-Think of this package as the pure Python version of [Mutex](#rustdoc-mutex)<[RefCell](rustdoc-refcell)<T>>
+Think of this package as the pure Python version of [Mutex](#rustdoc-mutex)<[RefCell](#rustdoc-refcell)<T>>
 
 #### For Pythonistas
 
-A lock [like any other](pydoc-threading-Lock) that forces its users to ensure
+A lock [like any other](#pydoc-threading-Lock) that forces its users to ensure
 that the data being locked isn't referenced anywhere else (leaking) leading to,
 as a consequence of, the requirement that you must always use lock in order to
 access the data (enforced protected access).
