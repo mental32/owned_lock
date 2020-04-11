@@ -5,7 +5,17 @@ from dataclasses import dataclass, field, InitVar
 from typing import TypeVar, Generic, Optional, ForwardRef
 from threading import Lock
 
-T = TypeVar('T')
+
+class OwnedLockException(Exception):
+    pass
+
+
+class LeakyReference(OwnedLockException):
+    pass
+
+
+T = TypeVar("T")
+
 
 @dataclass(frozen=True)
 class MutexGuard(Generic[T]):
@@ -13,6 +23,7 @@ class MutexGuard(Generic[T]):
 
     The data protected by the mutex can be accessed through this guard via the :attr:`value` attribute.
     """
+
     __hash__ = None
 
     value: T
@@ -24,6 +35,7 @@ class MutexGuard(Generic[T]):
 
 class Mutex(Generic[T]):
     """A modern :class:`threading.Lock` variant with dynamically checked ownership rules."""
+
     __hash__ = None
 
     value: InitVar[T]

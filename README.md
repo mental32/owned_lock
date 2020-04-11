@@ -65,7 +65,7 @@ from owned_lock import Mutex
 
 accessable_from_elsewhere = elsewhere = make_important_data()
 
-locked_state = Mutex(accessable_from_elsewhere)  # Exception! "owned_lock.DanglingReferences"
+locked_state = Mutex(accessable_from_elsewhere)  # Exception! "owned_lock.LeakyReference"
 ```
 
 ### With exception handling
@@ -73,13 +73,13 @@ locked_state = Mutex(accessable_from_elsewhere)  # Exception! "owned_lock.Dangli
 ```py
 import sys
 
-from owned_lock import Mutex, DanglingReferences
+from owned_lock import Mutex, LeakyReference
 
 accessable_from_elsewhere = elsewhere = make_important_data()
 
 try:
     locked_state = Mutex(accessable_from_elsewhere)
-except DanglingReferences:
+except LeakyReference:
     print(f"It works! {locked_state!r}")
 else:
     sys.exit("What happened to the ownership rules?!")
